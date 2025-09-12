@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile.coordinator
+    ports:
+      - "8080:8080"
+    environment:
+      - ROUNDS=10
+      - MIN_CLIENTS=3
+      - LOCAL_EPOCHS=1
+    networks:
+      - fl-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8080))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  hospital-client-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    environment:
+      - CLIENT_ID=1
+      - NUM_SAMPLES=600
+      - BATCH_SIZE=32
+      - SEED=1
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - fl-network
+
+  hospital-client-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    environment:
+      - CLIENT_ID=2
+      - NUM_SAMPLES=600
+      - BATCH_SIZE=32
+      - SEED=2
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - fl-network
+
+  hospital-client-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    environment:
+      - CLIENT_ID=3
+      - NUM_SAMPLES=600
+      - BATCH_SIZE=32
+      - SEED=3
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - fl-network
+
+  hospital-client-4:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    environment:
+      - CLIENT_ID=4
+      - NUM_SAMPLES=600
+      - BATCH_SIZE=32
+      - SEED=4
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - fl-network
+
+  hospital-client-5:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    environment:
+      - CLIENT_ID=5
+      - NUM_SAMPLES=600
+      - BATCH_SIZE=32
+      - SEED=5
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - fl-network
+
+networks:
+  fl-network:
+    driver: bridge

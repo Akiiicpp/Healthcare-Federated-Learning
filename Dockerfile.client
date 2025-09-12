@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Environment variables for client configuration
+ENV CLIENT_ID=0
+ENV NUM_SAMPLES=600
+ENV BATCH_SIZE=32
+ENV SEED=0
+
+# Run hospital client
+CMD ["python", "-m", "hospital_client.client", "--num-samples", "${NUM_SAMPLES}", "--batch-size", "${BATCH_SIZE}", "--seed", "${SEED}"]

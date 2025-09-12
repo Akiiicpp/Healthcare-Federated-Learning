@@ -1,0 +1,13 @@
+# Override for different scenarios
+version: '3.8'
+
+# For quick demo (3 clients, 3 rounds)
+services:
+  coordinator:
+    command: ["python", "-m", "coordinator.server", "--rounds", "3", "--min-clients", "3", "--local-epochs", "1"]
+  
+  hospital-client-4:
+    profiles: ["large-demo"]
+  
+  hospital-client-5:
+    profiles: ["large-demo"]

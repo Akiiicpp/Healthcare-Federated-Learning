@@ -1,0 +1,192 @@
+# Healthcare Federated Learning Platform - Command Reference
+# =========================================================
+
+## PHASE 1: Local Training (Sanity Check)
+# ======================================
+
+# 1. Navigate to project directory
+cd "/Users/akshat/Desktop/Projects/Healthcare Federated Learning Platform/federated_healthcare_demo"
+
+# 2. Create and activate virtual environment (first time only)
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 3. Install dependencies
+python -m pip install -r requirements.txt
+
+# 4. Run local training (2 epochs, synthetic data)
+python run_local_training.py
+
+# 5. Deactivate environment (when done)
+deactivate
+
+## PHASE 2: Federated Learning (Multiple Hospitals)
+# ================================================
+
+# 1. Navigate to project directory
+cd "/Users/akshat/Desktop/Projects/Healthcare Federated Learning Platform/federated_healthcare_demo"
+
+# 2. Activate virtual environment
+source .venv/bin/activate
+
+# 3. Basic federated training (3 clients, 2 rounds)
+./run_federated.sh
+
+# 4. Custom federated training
+./run_federated.sh --clients 5 --rounds 10 --local-epochs 2 --num-samples 800 --batch-size 32
+
+# 5. Quick test (3 clients, 3 rounds)
+./run_federated.sh --clients 3 --rounds 3 --local-epochs 1 --num-samples 400 --batch-size 16
+
+# 6. View final summary only
+./run_federated.sh --clients 4 --rounds 5 | tail -20
+
+# 7. Make script executable (if needed)
+chmod +x run_federated.sh
+
+## PHASE 3: Docker Deployment (Containerized)
+# ==========================================
+
+# 1. Prerequisites: Start Docker Desktop
+# (Make sure Docker Desktop is running)
+
+# 2. Navigate to project directory
+cd "/Users/akshat/Desktop/Projects/Healthcare Federated Learning Platform/federated_healthcare_demo"
+
+# 3. Quick demo (3 clients, 3 rounds)
+./run_docker.sh --scenario quick
+
+# 4. Large demo (5 clients, 10 rounds)
+./run_docker.sh --scenario large
+
+# 5. Custom configuration
+./run_docker.sh --clients 4 --rounds 5
+
+# 6. Manual Docker commands
+docker-compose up --build
+docker-compose up --scale hospital-client-1=5
+docker-compose logs -f coordinator
+docker-compose logs -f hospital-client-1
+docker-compose down
+
+# 7. Clean up Docker
+docker-compose down --rmi all
+
+## ADVANCED COMMANDS
+# =================
+
+# View help for federated learning
+./run_federated.sh --help
+
+# View help for Docker setup
+./run_docker.sh --help
+
+# Check Docker status
+docker-compose ps
+
+# View all running containers
+docker ps
+
+# View container logs
+docker logs <container_name>
+
+# Execute commands inside container
+docker exec -it <container_name> /bin/bash
+
+# Build specific service
+docker-compose build coordinator
+docker-compose build hospital-client-1
+
+# Run with different profiles
+docker-compose --profile large-demo up
+
+## TROUBLESHOOTING COMMANDS
+# ========================
+
+# Check if virtual environment is active
+which python
+
+# Check installed packages
+pip list
+
+# Check Python version
+python --version
+
+# Check if Docker is running
+docker info
+
+# Check port usage
+lsof -i :8080
+
+# Kill processes on port 8080
+lsof -ti:8080 | xargs kill -9
+
+# Reset Docker (if needed)
+docker system prune -a
+
+## FILE STRUCTURE REFERENCE
+# ========================
+
+federated_healthcare_demo/
+├── coordinator/
+│   ├── server.py              # Flower server
+│   ├── aggregator.py          # Model aggregation
+│   └── privacy_auditor.py     # Privacy tracking
+├── hospital_client/
+│   ├── client.py              # Flower client
+│   ├── trainer.py             # Local training
+│   └── data_loader.py         # Data handling
+├── models/
+│   ├── cnn_model.py           # ResNet-18 model
+│   └── privacy_utils.py       # DP utilities
+├── dashboard/                  # (Phase 3)
+├── data/                      # Dataset storage
+├── requirements.txt           # Python dependencies
+├── run_local_training.py      # Phase 1 script
+├── run_federated.sh           # Phase 2 script
+├── run_docker.sh              # Phase 4 script
+├── docker-compose.yml         # Docker orchestration
+├── Dockerfile.coordinator     # Server container
+├── Dockerfile.client          # Client container
+└── .venv/                     # Virtual environment
+
+## EXPECTED OUTPUTS
+# ================
+
+# Local Training Success:
+# Using device: mps
+# {'epoch': 1, 'train_loss': 0.034, 'val_loss': 0.0, 'val_acc': 1.0, 'val_auc': 1.0}
+# {'epoch': 2, 'train_loss': 9.1e-06, 'val_loss': 5.14e-08, 'val_acc': 1.0, 'val_auc': 1.0}
+# Saved model to /path/to/local_model.pth
+
+# Federated Learning Success:
+# [SUMMARY]
+# Run finished 3 round(s) in 57.08s
+# History (loss, centralized):
+#     round 0: 0.707
+#     round 1: 5.82e-06
+#     round 2: 7.14e-05
+# History (metrics, centralized):
+#     {'accuracy': [(0, 0.335), (1, 1.0), (2, 1.0), (3, 1.0)]}
+
+# Docker Success:
+# 🏥 Healthcare Federated Learning - Docker Demo
+# ==============================================
+# 📋 Configuration:
+#   Scenario: quick
+#   Clients: 3
+#   Rounds: 3
+# 🔨 Building Docker images...
+# 🚀 Starting federated learning simulation...
+# ✅ Demo completed!
+
+## NOTES
+# ======
+
+# - All commands assume you're in the project directory
+# - Virtual environment must be activated for local/federated training
+# - Docker Desktop must be running for containerized deployment
+# - Port 8080 is used by the coordinator server
+# - Synthetic data is used for all demos (800 samples per client by default)
+# - Model saves to federated_healthcare_demo/local_model.pth for local training
+# - All training uses Apple Silicon GPU (MPS) when available
