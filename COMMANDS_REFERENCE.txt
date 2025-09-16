@@ -44,6 +44,68 @@ source .venv/bin/activate
 # 7. Make script executable (if needed)
 chmod +x run_federated.sh
 
+## PHASE 2B: Multi-Computer Federated Learning (Hospital Simulation)
+# ==================================================================
+
+# This simulates real hospitals by running the coordinator on one computer
+# and hospital clients on separate computers/laptops with their own data.
+
+# Prerequisites: All computers must be on the same network, and ports 8080/5001 open.
+# Docker must be installed on all machines.
+
+# Option A: Native Python (No Docker)
+# ===================================
+
+# 1. On the Coordinator Computer (e.g., Hospital Server)
+cd "/Users/akshat/Desktop/Projects/Healthcare Federated Learning Platform/federated_healthcare_demo"
+source .venv/bin/activate
+python -m coordinator.server --rounds 10 --min-clients 4
+
+# Optional: Run API for monitoring on coordinator
+python api/app.py &
+# Access dashboard at http://coordinator-ip:5001
+
+# 2. On Each Hospital Computer (3-4 separate laptops/computers)
+# Set unique client ID for each hospital (0, 1, 2, 3, etc.)
+export CLIENT_ID=0  # Change for each hospital: 0, 1, 2, 3
+cd "/path/to/project/federated_healthcare_demo"  # Adjust path
+source .venv/bin/activate
+python -m hospital_client.client --num-samples 1000 --batch-size 32 --server-address coordinator-ip:8080
+
+# Option B: Using Docker Containers
+# ================================
+
+# 1. Build Docker Images (on each machine)
+cd "/path/to/project/federated_healthcare_demo"
+docker build -f Dockerfile.coordinator -t fl-coordinator .
+docker build -f Dockerfile.client -t fl-client .
+
+# 2. On the Coordinator Computer
+docker run -d --name coordinator -p 8080:8080 fl-coordinator python -m coordinator.server --rounds 10 --min-clients 4
+
+# Optional: Run API container for monitoring
+docker run -d --name api -p 5001:5001 fl-coordinator python api/app.py
+
+# 3. On Each Hospital Computer
+# Set coordinator IP (replace with actual IP)
+COORDINATOR_IP=192.168.1.100
+docker run -d --name hospital-client-1 -e CLIENT_ID=1 -e SERVER_ADDRESS=$COORDINATOR_IP:8080 fl-client
+
+# For additional hospitals, change CLIENT_ID and container name
+docker run -d --name hospital-client-2 -e CLIENT_ID=2 -e SERVER_ADDRESS=$COORDINATOR_IP:8080 fl-client
+
+# 4. For Real Data: Modify hospital_client/data_loader.py
+# Replace SyntheticMedicalDataset with code to load actual medical images
+# Mount host data directory: docker run -v /host/data:/app/data ...
+
+# 5. Monitoring
+# - Check coordinator logs: docker logs coordinator
+# - View API: http://coordinator-ip:5001/api/health
+# - Monitor rounds: http://coordinator-ip:5001/api/rounds/current
+
+# 6. Cleanup
+# docker stop $(docker ps -q) && docker rm $(docker ps -aq)
+
 ## PHASE 3: Docker Deployment (Containerized)
 # ==========================================
 

@@ -20,6 +20,7 @@ ENV CLIENT_ID=0
 ENV NUM_SAMPLES=600
 ENV BATCH_SIZE=32
 ENV SEED=0
+ENV SERVER_ADDRESS=127.0.0.1:8080
 
 # Run hospital client
-CMD ["python", "-m", "hospital_client.client", "--num-samples", "${NUM_SAMPLES}", "--batch-size", "${BATCH_SIZE}", "--seed", "${SEED}"]
+CMD ["python", "-m", "hospital_client.client", "--num-samples", "${NUM_SAMPLES}", "--batch-size", "${BATCH_SIZE}", "--seed", "${SEED}", "--server-address", "${SERVER_ADDRESS}"]

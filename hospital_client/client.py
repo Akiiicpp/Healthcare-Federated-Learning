@@ -66,9 +66,10 @@ def main():
     parser.add_argument("--num-samples", type=int, default=600)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--server-address", type=str, default="127.0.0.1:8080")
     args = parser.parse_args()
     client = HospitalClient(cid=cid, num_samples=args.num_samples, seed=args.seed, batch_size=args.batch_size)
-    fl.client.start_numpy_client(server_address="127.0.0.1:8080", client=client)
+    fl.client.start_numpy_client(server_address=args.server_address, client=client)
 
 
 if __name__ == "__main__":
