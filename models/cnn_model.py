@@ -18,6 +18,7 @@ class SmallResNetBlock(nn.Module):
                 nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(out_channels),
             )
+    
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = self.skip(x)

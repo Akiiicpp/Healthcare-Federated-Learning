@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 source .venv/bin/activate
 
-# Defaults
+# Default
 ROUNDS=2
 CLIENTS=3
 LOCAL_EPOCHS=1
@@ -46,3 +46,6 @@ wait $SERVER_PID || true
 for pid in "${CLIENT_PIDS[@]}"; do
   kill "$pid" >/dev/null 2>&1 || true
 done
+
+
+# cd "/Users/akshat/Desktop/Projects/Healthcare Federated Learning Platform/federated_healthcare_demo" && source .venv/bin/activate && ./run_federated.sh --clients 3 --rounds 3 --local-epochs 1 --num-samples 400 --batch-size 16 | tail -20

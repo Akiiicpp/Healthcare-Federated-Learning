@@ -4,6 +4,13 @@ import torch
 from models.cnn_model import create_model
 import argparse
 from hospital_client.data_loader import get_dataloaders
+import os
+from datetime import datetime
+
+try:
+    import requests  # type: ignore
+except Exception:  # pragma: no cover
+    requests = None  # fallback if requests not installed yet
 
 
 def get_parameters(model: torch.nn.Module) -> List[torch.Tensor]:
@@ -30,7 +37,17 @@ def set_parameters(model: torch.nn.Module, parameters: List[torch.Tensor]) -> No
     model.load_state_dict(new_state, strict=True)
 
 
-def get_evaluate_fn():
+def _post_json(url: str, payload: dict) -> None:
+    if requests is None:
+        return
+    try:
+        requests.post(url, json=payload, timeout=2)
+    except Exception:
+        # Non-fatal: API may be down; training should proceed
+        pass
+
+
+def get_evaluate_fn(api_base: str = ""):
     # Build a validation set on the server for quick global eval (synthetic)
     device = torch.device("mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu"))
     model = create_model(in_channels=1, num_classes=2).to(device)
@@ -53,7 +70,22 @@ def get_evaluate_fn():
                 preds = torch.argmax(logits, dim=1)
                 correct += (preds == labels).sum().item()
                 total += labels.size(0)
-        return float(total_loss / total), {"accuracy": float(correct / total)}
+        avg_loss = float(total_loss / total)
+        accuracy = float(correct / total)
+
+        # Publish to API if configured
+        if api_base:
+            _post_json(
+                f"{api_base}/api/internal/metrics",
+                {
+                    "round": int(server_round),
+                    "loss": avg_loss,
+                    "accuracy": accuracy,
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                },
+            )
+
+        return avg_loss, {"accuracy": accuracy}
 
     return evaluate
 
@@ -65,14 +97,22 @@ def main():
     parser.add_argument("--local-epochs", type=int, default=1, help="Local epochs per client per round")
     args = parser.parse_args()
 
+    api_base = os.environ.get("API_BASE_URL", "")
+
+    # Helper to publish round number via on_fit_config_fn
+    def on_fit_config(rnd: int) -> Dict[str, int]:
+        if api_base:
+            _post_json(f"{api_base}/api/internal/round", {"round": int(rnd)})
+        return {"local_epochs": args.local_epochs}
+
     strategy = fl.server.strategy.FedAvg(
         fraction_fit=1.0,
         fraction_evaluate=1.0,
         min_fit_clients=args.min_clients,
         min_evaluate_clients=args.min_clients,
         min_available_clients=args.min_clients,
-        evaluate_fn=get_evaluate_fn(),
-        on_fit_config_fn=lambda rnd: {"local_epochs": args.local_epochs},
+        evaluate_fn=get_evaluate_fn(api_base=api_base),
+        on_fit_config_fn=on_fit_config,
         initial_parameters=fl.common.ndarrays_to_parameters([t.numpy() for t in get_parameters(create_model())]),
     )
 
