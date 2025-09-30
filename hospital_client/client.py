@@ -1,4 +1,6 @@
 from typing import Dict, List, Tuple
+import os
+from datetime import datetime
 import flwr as fl
 import torch
 from torch import optim
@@ -49,6 +51,24 @@ class HospitalClient(fl.client.NumPyClient):
         for _ in range(local_epochs):
             train_one_epoch(self.model, self.train_loader, self.optimizer, self.device)
         num_examples = len(self.train_loader.dataset)
+
+        # Send metrics to API with client ID
+        if os.environ.get("API_BASE_URL"):
+            import requests
+            metrics = evaluate(self.model, self.val_loader, self.device)
+            payload = {
+                "cid": self.cid,
+                "round": int(config.get("round", 0)),
+                "loss": metrics.get("val_loss", 0.0),
+                "accuracy": metrics.get("val_acc", 0.0),
+                "val_auc": metrics.get("val_auc", 0.0),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            }
+            try:
+                requests.post(f"{os.environ['API_BASE_URL']}/api/internal/metrics", json=payload, timeout=2)
+            except Exception:
+                pass
+
         return self.get_parameters(config), num_examples, {}
 
     def evaluate(self, parameters, config):
@@ -59,7 +79,6 @@ class HospitalClient(fl.client.NumPyClient):
 
 
 def main():
-    import os
     import argparse
     cid = os.environ.get("CLIENT_ID", "0")
     parser = argparse.ArgumentParser()

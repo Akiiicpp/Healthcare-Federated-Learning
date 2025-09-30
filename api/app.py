@@ -11,7 +11,7 @@ def create_app() -> Flask:
     # In-memory store for quick start; replace with DB later
     state: Dict[str, object] = {
         "round": 0,
-        "metrics": [],  # List[Dict[str, object]]
+        "metrics": {},  # Dict[cid: str, List[Dict[str, object]]]
         "clients": [],  # List[Dict[str, object]]
     }
 
@@ -25,19 +25,40 @@ def create_app() -> Flask:
 
     @app.get("/api/metrics/latest")
     def latest_metrics():
-        metrics: List[Dict[str, object]] = state["metrics"]  # type: ignore
-        if not metrics:
-            return jsonify({}), 204
-        return jsonify(metrics[-1])
+        cid = request.args.get("cid")
+        if cid:
+            client_metrics = state["metrics"].get(cid, [])
+            if not client_metrics:
+                return jsonify({}), 204
+            return jsonify(client_metrics[-1])
+        else:
+            # Return latest global metrics (aggregate or from coordinator)
+            all_metrics = []
+            for mlist in state["metrics"].values():
+                all_metrics.extend(mlist)
+            if not all_metrics:
+                return jsonify({}), 204
+            return jsonify(all_metrics[-1])
 
     @app.get("/api/metrics/history")
     def metrics_history():
+        cid = request.args.get("cid")
         limit = int(request.args.get("limit", 100))
         offset = int(request.args.get("offset", 0))
-        metrics: List[Dict[str, object]] = state["metrics"]  # type: ignore
+        if cid:
+            client_metrics = state["metrics"].get(cid, [])
+            items = client_metrics[offset:offset+limit]
+            total = len(client_metrics)
+        else:
+            # Return all metrics combined
+            all_metrics = []
+            for mlist in state["metrics"].values():
+                all_metrics.extend(mlist)
+            items = all_metrics[offset:offset+limit]
+            total = len(all_metrics)
         return jsonify({
-            "items": metrics[offset:offset+limit],
-            "total": len(metrics),
+            "items": items,
+            "total": total,
             "offset": offset,
             "limit": limit,
         })
@@ -57,18 +78,22 @@ def create_app() -> Flask:
     @app.post("/api/internal/metrics")
     def add_metrics():
         payload = request.get_json(silent=True) or {}
+        cid = str(payload.get("cid", "global"))
         item = {
+            "cid": cid,
             "round": int(payload.get("round", 0)),
             "loss": float(payload.get("loss", 0.0)),
             "accuracy": float(payload.get("accuracy", 0.0)),
             "val_auc": float(payload.get("val_auc", 0.0)),
             "timestamp": payload.get("timestamp") or datetime.utcnow().isoformat() + "Z",
         }
-        metrics: List[Dict[str, object]] = state["metrics"]  # type: ignore
-        metrics.append(item)
+        metrics: Dict[str, List[Dict[str, object]]] = state["metrics"]  # type: ignore
+        if cid not in metrics:
+            metrics[cid] = []
+        metrics[cid].append(item)
         # Keep bounded for memory
-        if len(metrics) > 10000:
-            del metrics[:5000]
+        if len(metrics[cid]) > 10000:
+            del metrics[cid][:5000]
         return jsonify({"ok": True})
 
     @app.post("/api/internal/clients")

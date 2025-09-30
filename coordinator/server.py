@@ -78,6 +78,7 @@ def get_evaluate_fn(api_base: str = ""):
             _post_json(
                 f"{api_base}/api/internal/metrics",
                 {
+                    "cid": "global",
                     "round": int(server_round),
                     "loss": avg_loss,
                     "accuracy": accuracy,
